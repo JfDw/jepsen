@@ -120,11 +120,11 @@ few things:
 On Debian, try:
 
 ```
-sudo apt-get install openjdk-8-jre openjdk-8-jre-headless libjna-java gnuplot graphviz
+sudo apt install openjdk-17-jdk libjna-java gnuplot graphviz
 ```
 
 ... to get the basic requirements in place. Debian's Leiningen packages are
-ancient, so download lein from the web instead.
+ancient, so [download lein from the web instead](https://leiningen.org/).
 
 ## Running a Test
 
@@ -298,3 +298,5 @@ Additional projects that may be of interest:
 
 - [Jecci](https://github.com/michaelzenz/jecci): A wrapper framework around Jepsen
 - [Porcupine](https://github.com/anishathalye/porcupine): a linearizability checker written in Go.
+- [elle-cli](https://github.com/ligurio/elle-cli): command-line frontend to
+  transactional consistency checkers for black-box databases.

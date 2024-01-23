@@ -126,7 +126,7 @@
                           :exit  false
 
                           ; Ahhh
-                          :sleep (do (Thread/sleep (* 1000 (:value op)))
+                          :sleep (do (Thread/sleep (long (* 1000 (:value op))))
                                      (.put out op)
                                      true)
 
@@ -182,12 +182,14 @@
     true))
 
 (defn run!
-  "Takes a test with a :store :handle open. Opens a writer for the test's
-  history using that handle. Creates an initial context from test and evaluates
-  all ops from (:gen test). Spawns a thread for each worker, and hands those
-  workers operations from gen; each thread applies the operation using (:client
-  test) or (:nemesis test), as appropriate. Invocations and completions are
-  journaled to a history on disk, which is returned at the end of `run`.
+  "Takes a test with a :store :handle open. Causes the test's reference to the
+  :generator to be forgotten, to avoid retaining the head of infinite seqs.
+  Opens a writer for the test's history using that handle. Creates an initial
+  context from test and evaluates all ops from (:gen test). Spawns a thread for
+  each worker, and hands those workers operations from gen; each thread applies
+  the operation using (:client test) or (:nemesis test), as appropriate.
+  Invocations and completions are journaled to a history on disk. Returns a new
+  test with no :generator and a completed :history.
 
   Generators are automatically wrapped in friendly-exception and validate.
   Clients are wrapped in a validator as well.
@@ -208,8 +210,12 @@
                             worker-ids)
           invocations (into {} (map (juxt :id :in) workers))
           gen         (->> (:generator test)
+                           deref
                            gen/friendly-exceptions
-                           gen/validate)]
+                           gen/validate)
+          ; Forget generator
+          _           (util/forget! (:generator test))
+          test        (dissoc test :generator)]
       (try+
         (loop [ctx            ctx
                gen            gen
@@ -269,14 +275,16 @@
                           ; Await completion of writes
                           (.close history-writer)
                           ; And return history
-                          (let [history-block-id (:block-id history-writer)]
-                            (-> (:handle (:store test))
-                                (store.format/read-block-by-id
-                                  history-block-id)
-                                :data
-                                (h/history {:dense-indices? true
-                                            :have-indices? true
-                                            :already-ops? true})))))
+                          (let [history-block-id (:block-id history-writer)
+                                history
+                                (-> (:handle (:store test))
+                                    (store.format/read-block-by-id
+                                      history-block-id)
+                                    :data
+                                    (h/history {:dense-indices? true
+                                                :have-indices? true
+                                                :already-ops? true}))]
+                                (assoc test :history history))))
 
                 ; Nothing we can do right now. Let's try to complete something.
                 :pending (recur ctx gen op-index

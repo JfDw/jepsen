@@ -26,7 +26,7 @@
      (fn check-port []
        (exec :nc :-z :localhost port)
        nil)
-     (merge {:log-message "Waiting for port " port " ..."}
+     (merge {:log-message (str "Waiting for port " port " ...")}
             opts))))
 
 (defn file?
@@ -124,7 +124,7 @@
                 (catch [:type :jepsen.control/nonzero-exit, :exit 4] e
                   (if (pos? tries)
                     ::retry
-                    (throw e))))]
+                    (throw+ e))))]
       (if (= ::retry res)
         (recur (dec tries))
         res))))
@@ -204,6 +204,9 @@
   sole top-level directory to the given dest directory. Deletes
   current contents of dest. Supports both zip files and tarballs, compressed or
   raw. Returns dest.
+
+  URLs can be HTTP, HTTPS, or file://, in which case they are interpreted as a
+  file path on the remote node.
 
   Standard practice for release tarballs is to include a single directory,
   often named something like foolib-1.2.3-amd64, with files inside it. If only
@@ -301,7 +304,7 @@
                ;| :grep pattern
                ;| :grep :-v "grep"
                ;| :awk "{print $2}"
-               :pgrep pattern
+               :pgrep :-f :--ignore-ancestors pattern
                | :xargs :--no-run-if-empty :kill (str "-" (name+ signal)))
          (catch [:type :jepsen.control/nonzero-exit, :exit 0] _
            nil)
